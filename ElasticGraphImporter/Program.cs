@@ -47,13 +47,7 @@ namespace ElasticGraphImporter
                     .Query(q => q.MatchAll())
                 );
             else
-                /*var createIndexResponse = client.CreateIndex("index-name", c => c
-                        .Settings(s => s
-                            .NumberOfShards(1)
-                            .NumberOfReplicas(0)
-                        )
-                    );*/
-                Console.WriteLine("Make The " + nodesTableName + " Index And Try Again!");
+                Console.WriteLine(nodesTableName + " Index Was Not Fount And Will Be Created!");
 
             if (_client.Indices.Exists(connectionsTableName).Exists)
                 _client.DeleteByQuery<Edge>(del => del
@@ -61,13 +55,7 @@ namespace ElasticGraphImporter
                     .Query(q => q.MatchAll())
                 );
             else
-                /*var createIndexResponse = client.CreateIndex("index-name", c => c
-                        .Settings(s => s
-                            .NumberOfShards(1)
-                            .NumberOfReplicas(0)
-                        )
-                    );*/
-                Console.WriteLine("Make The " + connectionsTableName + " Index And Try Again!");
+                Console.WriteLine(connectionsTableName + " Index Was Not Fount And Will Be Created!");
 
             var lines = File.ReadAllLines(filePath);
             foreach (var line in lines) ReadEdge(line);
