@@ -6,18 +6,18 @@ using Nest;
 
 namespace ElasticGraphImporter
 {
-    internal class Program
+    internal static class Program
     {
-        private static ElasticClient client;
+        private static ElasticClient _client;
 
         private static readonly Dictionary<string, Guid> Ids = new Dictionary<string, Guid>();
         private static readonly List<Node> NodesList = new List<Node>();
         private static readonly List<Edge> EdgesList = new List<Edge>();
 
-        private static void Main(string[] args)
+        private static void Main()
         {
             var settings = new ConnectionSettings(new Uri("http://localhost:9200"));
-            client = new ElasticClient(settings);
+            _client = new ElasticClient(settings);
 
             var filePaths = Directory.GetFiles("..\\..\\files");
             while (true)
@@ -41,44 +41,38 @@ namespace ElasticGraphImporter
             EdgesList.Clear();
             var nodesTableName = graphName + "_node_set";
             var connectionsTableName = graphName + "_connections";
-            if (client.Indices.Exists(nodesTableName).Exists)
-            {
-                client.DeleteByQuery<Node>(del => del
+            if (_client.Indices.Exists(nodesTableName).Exists)
+                _client.DeleteByQuery<Node>(del => del
                     .Index(nodesTableName)
                     .Query(q => q.MatchAll())
                 );
-            }
             else
-            {
                 /*var createIndexResponse = client.CreateIndex("index-name", c => c
-                    .Settings(s => s
-                        .NumberOfShards(1)
-                        .NumberOfReplicas(0)
-                    )
-                );*/
-            }
+                        .Settings(s => s
+                            .NumberOfShards(1)
+                            .NumberOfReplicas(0)
+                        )
+                    );*/
+                Console.WriteLine("Make The " + nodesTableName + " Index And Try Again!");
 
-            if (client.Indices.Exists(connectionsTableName).Exists)
-            {
-                client.DeleteByQuery<Edge>(del => del
+            if (_client.Indices.Exists(connectionsTableName).Exists)
+                _client.DeleteByQuery<Edge>(del => del
                     .Index(connectionsTableName)
                     .Query(q => q.MatchAll())
                 );
-            }
             else
-            {
                 /*var createIndexResponse = client.CreateIndex("index-name", c => c
-                    .Settings(s => s
-                        .NumberOfShards(1)
-                        .NumberOfReplicas(0)
-                    )
-                );*/
-            }
+                        .Settings(s => s
+                            .NumberOfShards(1)
+                            .NumberOfReplicas(0)
+                        )
+                    );*/
+                Console.WriteLine("Make The " + connectionsTableName + " Index And Try Again!");
 
             var lines = File.ReadAllLines(filePath);
             foreach (var line in lines) ReadEdge(line);
-            var result1 = client.Bulk(b => b.Index(nodesTableName).IndexMany(NodesList));
-            var result2 = client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
+            var result1 = _client.Bulk(b => b.Index(nodesTableName).IndexMany(NodesList));
+            var result2 = _client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
             Console.WriteLine(graphName + " Imported.");
         }
 
