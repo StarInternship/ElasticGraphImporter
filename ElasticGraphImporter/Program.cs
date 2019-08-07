@@ -9,28 +9,22 @@ namespace ElasticGraphImporter
     internal static class Program
     {
         private static ElasticClient _client;
-
+        private const string DirectoryPath = "..\\..\\files";
         private static readonly Dictionary<string, Guid> Ids = new Dictionary<string, Guid>();
         private static readonly List<Node> NodesList = new List<Node>();
         private static readonly List<Edge> EdgesList = new List<Edge>();
 
         private static void Main()
         {
-            var settings = new ConnectionSettings(new Uri("http://localhost:9200"));
+            var settings = new ConnectionSettings(new Uri($"http://localhost:9200"));
             _client = new ElasticClient(settings);
 
-            var filePaths = Directory.GetFiles("..\\..\\files");
             while (true)
             {
-                Console.WriteLine("What is  the graph name?");
-                var graphName = Console.ReadLine()?.Trim(' ').ToLower();
-                foreach (var filePath in filePaths)
-                {
-                    var fileName = Path.GetFileName(filePath);
-                    if (!fileName.ToLower().StartsWith(graphName + ".")) continue;
-                    ImportGraph(filePath, graphName);
-                    break;
-                }
+                Console.WriteLine("What is the graph file name?");
+                var graphName = Console.ReadLine()?.Trim(' ');
+
+                ImportGraph(DirectoryPath + "/" + graphName, graphName?.Split('.')[0].ToLower());
             }
         }
 
@@ -41,26 +35,49 @@ namespace ElasticGraphImporter
             EdgesList.Clear();
             var nodesTableName = graphName + "_node_set";
             var connectionsTableName = graphName + "_connections";
+
             if (_client.Indices.Exists(nodesTableName).Exists)
-                _client.DeleteByQuery<Node>(del => del
-                    .Index(nodesTableName)
-                    .Query(q => q.MatchAll())
-                );
-            else
-                Console.WriteLine(nodesTableName + " Index Was Not Fount And Will Be Created!");
+            {
+                _client.Indices.Delete(nodesTableName);
+                Console.WriteLine(nodesTableName + " deleted.");
+            }
 
             if (_client.Indices.Exists(connectionsTableName).Exists)
-                _client.DeleteByQuery<Edge>(del => del
-                    .Index(connectionsTableName)
-                    .Query(q => q.MatchAll())
-                );
-            else
-                Console.WriteLine(connectionsTableName + " Index Was Not Fount And Will Be Created!");
+            {
+                _client.Indices.Delete(connectionsTableName);
+                Console.WriteLine(connectionsTableName + " deleted.");
+            }
+
+            _client.Indices.Create(nodesTableName);
+            Console.WriteLine(nodesTableName + " created.");
+            _client.Indices.Create(connectionsTableName, c => c.Map<Edge>(
+                m => m.Properties(p => p
+                    .Keyword(k => k
+                        .Name(edge => edge.SourceId)
+                    )
+                    .Keyword(k => k
+                        .Name(edge => edge.TargetId)
+                    )
+                    .Number(k => k
+                        .Name(edge => edge.Weight)
+                    )
+                )
+            ));
+            Console.WriteLine(connectionsTableName + " created.");
 
             var lines = File.ReadAllLines(filePath);
             foreach (var line in lines) ReadEdge(line);
-            var result1 = _client.Bulk(b => b.Index(nodesTableName).IndexMany(NodesList));
-            var result2 = _client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
+
+            var nodesBulkDescriptor = new BulkDescriptor(nodesTableName);
+
+            NodesList.ForEach(
+                node => nodesBulkDescriptor.Index<Dictionary<string, object>>(
+                    i => i.Document(new Dictionary<string, object>{["name"] =  node.Name}).Id(node.Id)
+                )
+            );
+
+            _client.Bulk(nodesBulkDescriptor);
+            _client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
             Console.WriteLine(graphName + " Imported.");
         }
 
