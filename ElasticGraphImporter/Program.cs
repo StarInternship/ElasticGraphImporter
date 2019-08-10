@@ -22,7 +22,7 @@ namespace ElasticGraphImporter
             while (true)
             {
                 Console.WriteLine("What is the graph file name?");
-                var graphName = Console.ReadLine()?.Trim(' ');
+                var graphName = Console.ReadLine()?.Trim();
 
                 ImportGraph(DirectoryPath + "/" + graphName, graphName?.Split('.')[0].ToLower());
             }
@@ -69,14 +69,13 @@ namespace ElasticGraphImporter
             foreach (var line in lines) ReadEdge(line);
 
             var nodesBulkDescriptor = new BulkDescriptor(nodesTableName);
-
             NodesList.ForEach(
                 node => nodesBulkDescriptor.Index<Dictionary<string, object>>(
-                    i => i.Document(new Dictionary<string, object>{["name"] =  node.Name}).Id(node.Id)
+                    i => i.Document(new Dictionary<string, object> {["name"] = node.Name}).Id(node.Id)
                 )
             );
-
             _client.Bulk(nodesBulkDescriptor);
+
             _client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
             Console.WriteLine(graphName + " Imported.");
         }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BigDataPathFinding.Models
+namespace ElasticGraphImporter
 {
     public class Node
     {
@@ -15,7 +15,7 @@ namespace BigDataPathFinding.Models
 
         public override bool Equals(object obj)
         {
-            return this == obj || obj is Node node && node.Id.Equals(Id);
+            return this == obj || (obj is Node node && node.Id.Equals(Id));
         }
 
         public override int GetHashCode()
