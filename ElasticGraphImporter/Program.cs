@@ -13,6 +13,8 @@ namespace ElasticGraphImporter
         private static readonly Dictionary<string, Guid> Ids = new Dictionary<string, Guid>();
         private static readonly List<Node> NodesList = new List<Node>();
         private static readonly List<Edge> EdgesList = new List<Edge>();
+        private static string nodesTableName;
+        private static string connectionsTableName;
 
         private static void Main()
         {
@@ -33,8 +35,8 @@ namespace ElasticGraphImporter
             Ids.Clear();
             NodesList.Clear();
             EdgesList.Clear();
-            var nodesTableName = graphName + "_node_set";
-            var connectionsTableName = graphName + "_connections";
+            nodesTableName = graphName + "_node_set";
+            connectionsTableName = graphName + "_connections";
 
             if (_client.Indices.Exists(nodesTableName).Exists)
             {
@@ -95,6 +97,25 @@ namespace ElasticGraphImporter
             if (!Ids.ContainsKey(sourceName)) AddNode(sourceName);
             if (!Ids.ContainsKey(targetName)) AddNode(targetName);
             EdgesList.Add(new Edge(Ids[sourceName], Ids[targetName], weight));
+            if (EdgesList.Count > 10000)
+            {
+                _client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
+                EdgesList.Clear();
+                Console.WriteLine("Importing Edges...");
+            }
+
+            if (NodesList.Count > 10000)
+            {
+                var nodesBulkDescriptor = new BulkDescriptor(nodesTableName);
+                NodesList.ForEach(
+                    node => nodesBulkDescriptor.Index<Dictionary<string, object>>(
+                        i => i.Document(new Dictionary<string, object> {["name"] = node.Name}).Id(node.Id)
+                    )
+                );
+                _client.Bulk(nodesBulkDescriptor);
+                NodesList.Clear();
+                Console.WriteLine("Importing Nodes...");
+            }
         }
 
         private static void AddNode(string name)
