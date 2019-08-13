@@ -30,7 +30,7 @@ namespace ElasticGraphImporter
             while (true)
             {
                 Console.WriteLine("What is the graph file name?");
-                var graphName = Console.ReadLine()?.Trim(' ');
+                var graphName = Console.ReadLine()?.Trim();
                 numberOfReadLines = 0;
 
                 ImportGraph(DirectoryPath + graphName, graphName?.Split('.')[0].ToLower());
