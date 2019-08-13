@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using BigDataPathFinding.Models;
 using Nest;
 
@@ -10,6 +11,7 @@ namespace ElasticGraphImporter
     {
         private static ElasticClient _client;
         private const string DirectoryPath = "..\\..\\files";
+        private const int ChunkSize = 300000;
         private static readonly Dictionary<string, Guid> Ids = new Dictionary<string, Guid>();
         private static readonly List<Node> NodesList = new List<Node>();
         private static readonly List<Edge> EdgesList = new List<Edge>();
@@ -68,23 +70,32 @@ namespace ElasticGraphImporter
             var lines = File.ReadAllLines(filePath);
             foreach (var line in lines) ReadEdge(line);
 
-            var nodesBulkDescriptor = new BulkDescriptor(nodesTableName);
+            foreach (var list in NodesList.ChunkBy(ChunkSize))
+            {
+                var nodesBulkDescriptor = new BulkDescriptor(nodesTableName);
 
-            NodesList.ForEach(
-                node => nodesBulkDescriptor.Index<Dictionary<string, object>>(
-                    i => i.Document(new Dictionary<string, object>{["name"] =  node.Name}).Id(node.Id)
-                )
-            );
+                list.ForEach(
+                    node => nodesBulkDescriptor.Index<Dictionary<string, object>>(
+                        i => i.Document(new Dictionary<string, object> { ["name"] = node.Name }).Id(node.Id)
+                    )
+                );
 
-            _client.Bulk(nodesBulkDescriptor);
-            _client.Bulk(b => b.Index(connectionsTableName).IndexMany(EdgesList));
+                _client.Bulk(nodesBulkDescriptor);
+            }
+
+
+            foreach (var list in EdgesList.ChunkBy(ChunkSize))
+            {
+                _client.Bulk(b => b.Index(connectionsTableName).IndexMany(list));
+            }
+
             Console.WriteLine(graphName + " Imported.");
         }
 
 
         private static void ReadEdge(string edge)
         {
-            var groups = edge.Split(',');
+            var groups = Regex.Split(edge, "[,-]");
             var source = groups[0];
             var target = groups[1];
             var weight = double.Parse(groups[2]);
