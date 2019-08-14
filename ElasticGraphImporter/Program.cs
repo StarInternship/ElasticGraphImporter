@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using BigDataPathFinding.Models;
 using BigDataPathFinding.Models.Elastic;
 using Nest;
@@ -16,12 +16,15 @@ namespace ElasticGraphImporter
         private const string DirectoryPath = "../../files/";
         private const int BulkInsertChunkSize = 300000;
         private const int LinesPerRead = 3000000;
-        private static readonly Stopwatch sw = new Stopwatch();
+        private static readonly Stopwatch DefaultWatch = new Stopwatch();
+        private static readonly Stopwatch NodeInserterWatch = new Stopwatch();
+        private static readonly Stopwatch EdgeInserterWatch = new Stopwatch();
         private static readonly Uri ElasticUri = new Uri($"http://localhost:9200");
         private static Dictionary<string, Guid> Ids = new Dictionary<string, Guid>();
         private static List<Node> NodesList = new List<Node>();
         private static List<Edge> EdgesList = new List<Edge>();
         private static int numberOfReadLines;
+        private static Task InserterTask = null;
 
         private static void Main()
         {
@@ -49,6 +52,13 @@ namespace ElasticGraphImporter
             CreateNodeSetIndex(nodesTableName);
             CreateConnectionsIndex(connectionsTableName);
 
+            ReadGraph(filePath, nodesTableName, connectionsTableName);
+
+            Console.WriteLine(graphName + " Imported.");
+        }
+
+        private static void ReadGraph(string filePath, string nodesTableName, string connectionsTableName)
+        {
             foreach (var lines in ReadCursored(filePath))
             {
                 NodesList = new List<Node>();
@@ -59,32 +69,45 @@ namespace ElasticGraphImporter
                     ReadEdge(line);
                 }
 
-                foreach (var list in NodesList.ChunkBy(BulkInsertChunkSize))
+                if (InserterTask != null)
+                {
+                    InserterTask.Wait();
+                }
+                BeginBulkInsert(nodesTableName, connectionsTableName);
+            }
+            InserterTask.Wait();
+        }
+
+        private static void BeginBulkInsert(string nodesTableName, string connectionsTableName)
+        {
+            var nodesList = NodesList;
+            var edgesList = EdgesList;
+            InserterTask = new Task(() =>
+            {
+                foreach (var list in nodesList.ChunkBy(BulkInsertChunkSize))
                 {
                     NodesBulkInsert(nodesTableName, list);
                 }
-
-                foreach (var list in EdgesList.ChunkBy(BulkInsertChunkSize))
+                foreach (var list in edgesList.ChunkBy(BulkInsertChunkSize))
                 {
                     EdgesBulkInsert(connectionsTableName, list);
                 }
-            }
-
-            Console.WriteLine(graphName + " Imported.");
+            });
+            InserterTask.Start();
         }
 
         private static void EdgesBulkInsert(string connectionsTableName, List<Edge> list)
         {
-            sw.Restart();
+            EdgeInserterWatch.Restart();
             _client.Bulk(b => b.Index(connectionsTableName).IndexMany(list)).Validate();
-            Console.WriteLine("Bulk edge insert in " + sw.ElapsedMilliseconds + " ms. count: " + list.Count);
+            Console.WriteLine("Bulk edge insert in " + EdgeInserterWatch.ElapsedMilliseconds + " ms. count: " + list.Count);
         }
 
         private static void NodesBulkInsert(string nodesTableName, List<Node> list)
         {
             var nodesBulkDescriptor = new BulkDescriptor(nodesTableName);
 
-            sw.Restart();
+            NodeInserterWatch.Restart();
             list.ForEach(
                 node => nodesBulkDescriptor.Index<Dictionary<string, object>>(
                     i => i.Document(new Dictionary<string, object> { ["name"] = node.Name }).Id(node.Id)
@@ -92,18 +115,18 @@ namespace ElasticGraphImporter
             );
 
             _client.Bulk(nodesBulkDescriptor).Validate();
-            Console.WriteLine("Bulk node insert in " + sw.ElapsedMilliseconds + " ms. count: " + list.Count);
+            Console.WriteLine("Bulk node insert in " + NodeInserterWatch.ElapsedMilliseconds + " ms. count: " + list.Count);
         }
 
         private static void CreateConnectionsIndex(string connectionsTableName)
         {
             if (_client.Indices.Exists(connectionsTableName).Exists)
             {
-                sw.Restart();
+                DefaultWatch.Restart();
                 _client.Indices.Delete(connectionsTableName).Validate();
-                Console.WriteLine(connectionsTableName + " deleted in " + sw.ElapsedMilliseconds + " ms.");
+                Console.WriteLine(connectionsTableName + " deleted in " + DefaultWatch.ElapsedMilliseconds + " ms.");
             }
-            sw.Restart();
+            DefaultWatch.Restart();
             _client.Indices.Create(connectionsTableName, c => c.Map<Edge>(
                 m => m.Properties(p => p
                     .Keyword(k => k
@@ -117,21 +140,21 @@ namespace ElasticGraphImporter
                     )
                 )
             )).Validate();
-            Console.WriteLine(connectionsTableName + " created in " + sw.ElapsedMilliseconds + " ms.");
+            Console.WriteLine(connectionsTableName + " created in " + DefaultWatch.ElapsedMilliseconds + " ms.");
         }
 
         private static void CreateNodeSetIndex(string nodesTableName)
         {
             if (_client.Indices.Exists(nodesTableName).Exists)
             {
-                sw.Restart();
+                DefaultWatch.Restart();
                 _client.Indices.Delete(nodesTableName).Validate();
-                Console.WriteLine(nodesTableName + " deleted in " + sw.ElapsedMilliseconds + " ms.");
+                Console.WriteLine(nodesTableName + " deleted in " + DefaultWatch.ElapsedMilliseconds + " ms.");
             }
 
-            sw.Restart();
+            DefaultWatch.Restart();
             _client.Indices.Create(nodesTableName).Validate();
-            Console.WriteLine(nodesTableName + " created in " + sw.ElapsedMilliseconds + " ms.");
+            Console.WriteLine(nodesTableName + " created in " + DefaultWatch.ElapsedMilliseconds + " ms.");
         }
 
         private static IEnumerable<IEnumerable<string>> ReadCursored(string filePath)
@@ -142,7 +165,7 @@ namespace ElasticGraphImporter
                 {
                     int remainingLines = LinesPerRead;
                     var currentList = new List<string>();
-                    sw.Restart();
+                    DefaultWatch.Restart();
 
                     while (input.Position < input.Length && remainingLines-- > 0)
                     {
@@ -150,7 +173,7 @@ namespace ElasticGraphImporter
                     }
                     numberOfReadLines += currentList.Count;
 
-                    Console.WriteLine(currentList.Count + " lines read in " + sw.ElapsedMilliseconds + " ms.");
+                    Console.WriteLine(currentList.Count + " lines read in " + DefaultWatch.ElapsedMilliseconds + " ms.");
                     Console.WriteLine("all lines read: " + numberOfReadLines);
 
                     yield return currentList;
