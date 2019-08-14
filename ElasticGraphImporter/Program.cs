@@ -160,7 +160,7 @@ namespace ElasticGraphImporter
 
         private static void ReadEdge(string edge)
         {
-            var groups = Regex.Split(edge, ",");
+            var groups = Regex.Split(edge, ",|-");
             var source = groups[0];
             var target = groups[1];
             var weight = double.Parse(groups[2]);
