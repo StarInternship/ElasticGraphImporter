@@ -59,6 +59,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Edge.cs" />
+    <Compile Include="Elastic\ElasticResponseValidator.cs" />
+    <Compile Include="Elastic\ResponseException.cs" />
     <Compile Include="FileStreamExtension.cs" />
     <Compile Include="IEnumerableExtension.cs" />
     <Compile Include="Node.cs" />

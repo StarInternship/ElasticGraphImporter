@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using BigDataPathFinding.Models;
+using BigDataPathFinding.Models.Elastic;
 using Nest;
 
 namespace ElasticGraphImporter
@@ -75,7 +76,7 @@ namespace ElasticGraphImporter
         private static void EdgesBulkInsert(string connectionsTableName, List<Edge> list)
         {
             sw.Restart();
-            _client.Bulk(b => b.Index(connectionsTableName).IndexMany(list));
+            _client.Bulk(b => b.Index(connectionsTableName).IndexMany(list)).Validate();
             Console.WriteLine("Bulk edge insert in " + sw.ElapsedMilliseconds + " ms. count: " + list.Count);
         }
 
@@ -90,7 +91,7 @@ namespace ElasticGraphImporter
                 )
             );
 
-            _client.Bulk(nodesBulkDescriptor);
+            _client.Bulk(nodesBulkDescriptor).Validate();
             Console.WriteLine("Bulk node insert in " + sw.ElapsedMilliseconds + " ms. count: " + list.Count);
         }
 
@@ -99,7 +100,7 @@ namespace ElasticGraphImporter
             if (_client.Indices.Exists(connectionsTableName).Exists)
             {
                 sw.Restart();
-                _client.Indices.Delete(connectionsTableName);
+                _client.Indices.Delete(connectionsTableName).Validate();
                 Console.WriteLine(connectionsTableName + " deleted in " + sw.ElapsedMilliseconds + " ms.");
             }
             sw.Restart();
@@ -115,7 +116,7 @@ namespace ElasticGraphImporter
                         .Name(edge => edge.Weight)
                     )
                 )
-            ));
+            )).Validate();
             Console.WriteLine(connectionsTableName + " created in " + sw.ElapsedMilliseconds + " ms.");
         }
 
@@ -124,12 +125,12 @@ namespace ElasticGraphImporter
             if (_client.Indices.Exists(nodesTableName).Exists)
             {
                 sw.Restart();
-                _client.Indices.Delete(nodesTableName);
+                _client.Indices.Delete(nodesTableName).Validate();
                 Console.WriteLine(nodesTableName + " deleted in " + sw.ElapsedMilliseconds + " ms.");
             }
 
             sw.Restart();
-            _client.Indices.Create(nodesTableName);
+            _client.Indices.Create(nodesTableName).Validate();
             Console.WriteLine(nodesTableName + " created in " + sw.ElapsedMilliseconds + " ms.");
         }
 
