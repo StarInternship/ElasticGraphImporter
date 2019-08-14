@@ -60,9 +60,11 @@
   <ItemGroup>
     <Compile Include="Models\CursorFileReader.cs" />
     <Compile Include="Models\Edge.cs" />
+    <Compile Include="Models\ElasticDataInserter.cs" />
     <Compile Include="Models\Elastic\ElasticResponseValidator.cs" />
     <Compile Include="Models\Elastic\ResponseException.cs" />
     <Compile Include="Models\FileStreamExtension.cs" />
+    <Compile Include="Models\GraphData.cs" />
     <Compile Include="Models\IEnumerableExtension.cs" />
     <Compile Include="Models\Node.cs" />
     <Compile Include="Program.cs" />
