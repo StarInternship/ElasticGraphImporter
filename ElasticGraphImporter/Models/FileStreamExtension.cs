@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Text;
 
-namespace ElasticGraphImporter
+namespace ElasticGraphImporter.Models
 {
     public static class FileStreamExtension
     {

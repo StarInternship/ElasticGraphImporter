@@ -1,7 +1,7 @@
 ﻿using Nest;
 using System;
 
-namespace BigDataPathFinding.Models.Elastic
+namespace ElasticGraphImporter.Models.Elastic
 {
     public class ResponseException : Exception
     {

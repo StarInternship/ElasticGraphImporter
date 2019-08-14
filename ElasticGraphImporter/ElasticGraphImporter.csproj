@@ -58,12 +58,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Edge.cs" />
-    <Compile Include="Elastic\ElasticResponseValidator.cs" />
-    <Compile Include="Elastic\ResponseException.cs" />
-    <Compile Include="FileStreamExtension.cs" />
-    <Compile Include="IEnumerableExtension.cs" />
-    <Compile Include="Node.cs" />
+    <Compile Include="Models\CursorFileReader.cs" />
+    <Compile Include="Models\Edge.cs" />
+    <Compile Include="Models\Elastic\ElasticResponseValidator.cs" />
+    <Compile Include="Models\Elastic\ResponseException.cs" />
+    <Compile Include="Models\FileStreamExtension.cs" />
+    <Compile Include="Models\IEnumerableExtension.cs" />
+    <Compile Include="Models\Node.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

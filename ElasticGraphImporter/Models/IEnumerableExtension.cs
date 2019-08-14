@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace ElasticGraphImporter
+namespace ElasticGraphImporter.Models
 {
     public static class ListExtension
     {

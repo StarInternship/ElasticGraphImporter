@@ -1,6 +1,6 @@
 ﻿using Nest;
 
-namespace BigDataPathFinding.Models.Elastic
+namespace ElasticGraphImporter.Models.Elastic
 {
     public static class ElasticResponseValidator
     {

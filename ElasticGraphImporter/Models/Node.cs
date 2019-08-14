@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ElasticGraphImporter
+namespace ElasticGraphImporter.Models
 {
     public class Node
     {

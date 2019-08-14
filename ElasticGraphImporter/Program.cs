@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using BigDataPathFinding.Models;
-using BigDataPathFinding.Models.Elastic;
+using ElasticGraphImporter.Models;
+using ElasticGraphImporter.Models.Elastic;
 using Nest;
 
 namespace ElasticGraphImporter
@@ -15,7 +14,6 @@ namespace ElasticGraphImporter
         private static ElasticClient _client;
         private const string DirectoryPath = "../../files/";
         private const int BulkInsertChunkSize = 300000;
-        private const int LinesPerRead = 3000000;
         private static readonly Stopwatch DefaultWatch = new Stopwatch();
         private static readonly Stopwatch NodeInserterWatch = new Stopwatch();
         private static readonly Stopwatch EdgeInserterWatch = new Stopwatch();
@@ -23,7 +21,6 @@ namespace ElasticGraphImporter
         private static Dictionary<string, Guid> Ids = new Dictionary<string, Guid>();
         private static List<Node> NodesList = new List<Node>();
         private static List<Edge> EdgesList = new List<Edge>();
-        private static int numberOfReadLines;
         private static Task InserterTask = null;
 
         private static void Main()
@@ -35,7 +32,6 @@ namespace ElasticGraphImporter
             {
                 Console.WriteLine("What is the graph file name?");
                 var graphName = Console.ReadLine()?.Trim();
-                numberOfReadLines = 0;
 
                 ImportGraph(DirectoryPath + graphName, graphName?.Split('.')[0].ToLower());
             }
@@ -59,7 +55,7 @@ namespace ElasticGraphImporter
 
         private static void ReadGraph(string filePath, string nodesTableName, string connectionsTableName)
         {
-            foreach (var lines in ReadCursored(filePath))
+            foreach (var lines in new CursorFileReader(filePath).Read())
             {
                 NodesList = new List<Node>();
                 EdgesList = new List<Edge>();
@@ -155,30 +151,6 @@ namespace ElasticGraphImporter
             DefaultWatch.Restart();
             _client.Indices.Create(nodesTableName).Validate();
             Console.WriteLine(nodesTableName + " created in " + DefaultWatch.ElapsedMilliseconds + " ms.");
-        }
-
-        private static IEnumerable<IEnumerable<string>> ReadCursored(string filePath)
-        {
-            using (var input = File.OpenRead(filePath))
-            {
-                while (input.Position < input.Length)
-                {
-                    int remainingLines = LinesPerRead;
-                    var currentList = new List<string>();
-                    DefaultWatch.Restart();
-
-                    while (input.Position < input.Length && remainingLines-- > 0)
-                    {
-                        currentList.Add(input.ReadLine());
-                    }
-                    numberOfReadLines += currentList.Count;
-
-                    Console.WriteLine(currentList.Count + " lines read in " + DefaultWatch.ElapsedMilliseconds + " ms.");
-                    Console.WriteLine("all lines read: " + numberOfReadLines);
-
-                    yield return currentList;
-                }
-            }
         }
 
         private static void ReadEdge(string edge)

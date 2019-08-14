@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BigDataPathFinding.Models
+namespace ElasticGraphImporter.Models
 {
     public class Edge
     {
